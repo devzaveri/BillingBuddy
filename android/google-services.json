@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "373733593434",
+    "project_id": "billingbuddy-62465",
+    "storage_bucket": "billingbuddy-62465.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:373733593434:android:6338c2d2ff4cbc8744e363",
+        "android_client_info": {
+          "package_name": "com.billingbuddy"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDp9-8hqSy8utbdmr2uFrDv6prSa3TbCaA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
