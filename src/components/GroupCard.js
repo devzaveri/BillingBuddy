@@ -36,7 +36,8 @@ const GroupCard = ({ group, onPress }) => {
 
   const getUserBalance = () => {
     const member = group.members.find(m => m.id === user?.id);
-    return member ? member.balance : 0;
+    // Ensure we have a numeric value for balance
+    return member && member.balance !== undefined ? Number(member.balance) : 0;
   };
 
   const balance = getUserBalance();
@@ -79,7 +80,7 @@ const GroupCard = ({ group, onPress }) => {
               styles.balance,
               { color: isPositive ? '#4ade80' : '#ef4444' }
             ]}>
-              {isPositive ? '+' : ''}{balance?.toFixed(2)}
+              {isPositive ? '+' : ''}{balance.toFixed(2)}
             </Text>
           </View>
 

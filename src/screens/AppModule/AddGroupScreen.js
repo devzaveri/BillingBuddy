@@ -93,6 +93,7 @@ const AddGroupScreen = ({ navigation }) => {
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
         totalExpenses: 0,
+        totalBalance: 0,
         members: [{
           id: user.id,
           name: user.name || 'Unknown',

@@ -17,7 +17,8 @@ import { storage, auth, db } from '../../services/firebase';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { doc, updateDoc } from 'firebase/firestore';
 import { toggleTheme } from '../../redux/slices/themeSlice';
-import { setProfileUrl, logout } from '../../redux/slices/authSlice';
+import { setProfileUrl, logout, updateUserName, clearAuth } from '../../redux/slices/authSlice';
+import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 
 const SettingsScreen = () => {
   const navigation = useNavigation();
@@ -70,6 +71,10 @@ const SettingsScreen = () => {
     try {
       const userRef = doc(db, 'users', user.id);
       await updateDoc(userRef, { name: userName.trim() });
+      
+      // Update in Redux and persist
+      dispatch(updateUserName(userName.trim()));
+      
       Alert.alert('Success', 'Name updated successfully');
       setIsEditing(false);
     } catch (error) {
@@ -91,11 +96,16 @@ const SettingsScreen = () => {
           style: 'destructive',
           onPress: async () => {
             try {
+              setLoading(true);
               await auth.signOut();
+              // Clear AsyncStorage and Redux state
+              await dispatch(clearAuth()).unwrap();
               dispatch(logout());
+              setLoading(false);
             } catch (error) {
               console.error('Error signing out:', error);
               Alert.alert('Error', 'Failed to sign out');
+              setLoading(false);
             }
           },
         },

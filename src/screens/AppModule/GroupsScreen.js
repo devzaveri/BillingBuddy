@@ -27,6 +27,18 @@ const GroupsScreen = () => {
 
   useEffect(() => {
     navigation.setOptions({
+      headerTitle: () => (
+        <View style={styles.headerTitleContainer}>
+          <Image 
+            source={require('../../assets/logo.png')} 
+            style={styles.logo} 
+            resizeMode="contain"
+          />
+          <Text style={[styles.headerTitle, { color: theme ? '#f1f1f1' : '#121212' }]}>
+            BillingBuddy
+          </Text>
+        </View>
+      ),
       headerRight: () => (
         <TouchableOpacity
           style={styles.profileButton}
@@ -122,10 +134,59 @@ const GroupsScreen = () => {
         styles.container,
         { backgroundColor: theme ? '#121212' : '#ffffff' }
       ]}>
-        <ActivityIndicator
-          size="large"
-          color={theme ? '#4ade80' : '#22c55e'}
-        />
+        {loading && !refreshing ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator
+              size="large"
+              color={theme ? '#4ade80' : '#22c55e'}
+            />
+          </View>
+        ) : (
+          <FlatList
+            data={groups}
+            renderItem={({ item }) => (
+              <GroupCard
+                group={item}
+                onPress={() => navigation.navigate('GroupDetail', { groupId: item.id, groupName: item.name })}
+              />
+            )}
+            keyExtractor={item => item.id}
+            contentContainerStyle={styles.listContent}
+            refreshing={refreshing}
+            onRefresh={handleRefresh}
+            ListEmptyComponent={
+              <View style={styles.emptyContainer}>
+                <Icon 
+                  name="account-group" 
+                  size={64} 
+                  color={theme ? '#333333' : '#e5e5e5'} 
+                />
+                <Text style={[
+                  styles.emptyText,
+                  { color: theme ? '#f1f1f1' : '#121212' }
+                ]}>
+                  You don't have any groups yet
+                </Text>
+                <Text style={[
+                  styles.emptySubtext,
+                  { color: theme ? '#a1a1aa' : '#71717a' }
+                ]}>
+                  Create a new group to get started
+                </Text>
+              </View>
+            }
+          />
+        )}
+
+        <TouchableOpacity
+          style={[
+            styles.addButton,
+            { backgroundColor: theme ? '#4ade80' : '#22c55e' }
+          ]}
+          onPress={() => navigation.navigate('AddGroupScreen')}
+        >
+          <Icon name="plus" size={24} color="#ffffff" />
+        </TouchableOpacity>
       </View>
     );
   }
@@ -140,33 +201,44 @@ const GroupsScreen = () => {
         renderItem={({ item }) => (
           <GroupCard
             group={item}
-            onPress={() => navigation.navigate('GroupDetail', { groupId: item.id })}
+            onPress={() => navigation.navigate('GroupDetail', { groupId: item.id, groupName: item.name })}
           />
         )}
         keyExtractor={item => item.id}
-        contentContainerStyle={styles.list}
+        contentContainerStyle={styles.listContent}
         refreshing={refreshing}
         onRefresh={handleRefresh}
-        ListEmptyComponent={() => (
+        ListEmptyComponent={
           <View style={styles.emptyContainer}>
+            <Icon 
+              name="account-group" 
+              size={64} 
+              color={theme ? '#333333' : '#e5e5e5'} 
+            />
             <Text style={[
               styles.emptyText,
               { color: theme ? '#f1f1f1' : '#121212' }
             ]}>
-              No groups yet. Create one to get started!
+              You don't have any groups yet
+            </Text>
+            <Text style={[
+              styles.emptySubtext,
+              { color: theme ? '#a1a1aa' : '#71717a' }
+            ]}>
+              Create a new group to get started
             </Text>
           </View>
-        )}
+        }
       />
-      
+
       <TouchableOpacity
         style={[
-          styles.fab,
+          styles.addButton,
           { backgroundColor: theme ? '#4ade80' : '#22c55e' }
         ]}
-        onPress={handleCreateGroup}
+        onPress={() => navigation.navigate('AddGroupScreen')}
       >
-        <Text style={styles.fabText}>+</Text>
+        <Icon name="plus" size={24} color="#ffffff" />
       </TouchableOpacity>
     </View>
   );
@@ -175,6 +247,19 @@ const GroupsScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  headerTitleContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  logo: {
+    width: 24,
+    height: 24,
+    marginRight: 8,
+  },
+  headerTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
   },
   profileButton: {
     marginRight: 8,
@@ -200,7 +285,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
   },
-  list: {
+  listContent: {
     padding: 16,
   },
   emptyContainer: {
@@ -213,25 +298,30 @@ const styles = StyleSheet.create({
     fontSize: 16,
     textAlign: 'center',
   },
-  fab: {
+  emptySubtext: {
+    fontSize: 14,
+    textAlign: 'center',
+    marginTop: 8,
+  },
+  addButton: {
     position: 'absolute',
-    right: 16,
-    bottom: 16,
+    bottom: 20,
+    right: 20,
     width: 56,
     height: 56,
     borderRadius: 28,
     justifyContent: 'center',
     alignItems: 'center',
-    elevation: 4,
+    elevation: 5,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.25,
-    shadowRadius: 4,
+    shadowRadius: 3.84,
   },
-  fabText: {
-    fontSize: 24,
-    color: '#ffffff',
-    fontWeight: 'bold',
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 });
 

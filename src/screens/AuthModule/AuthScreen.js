@@ -18,7 +18,7 @@ import { auth, storage, db } from '../../services/firebase';
 import { createUserWithEmailAndPassword, signInWithEmailAndPassword } from 'firebase/auth';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { doc, setDoc, getDoc } from 'firebase/firestore';
-import { setUser } from '../../redux/slices/authSlice';
+import { setUser, persistAuth } from '../../redux/slices/authSlice';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 
 const AuthScreen = ({ navigation }) => {
@@ -77,7 +77,9 @@ const AuthScreen = ({ navigation }) => {
         userCredential = await signInWithEmailAndPassword(auth, email, password);
         const userDoc = await getDoc(doc(db, 'users', userCredential.user.uid));
         if (userDoc.exists()) {
-          dispatch(setUser({ ...userDoc.data(), id: userCredential.user.uid }));
+          const userData = { ...userDoc.data(), id: userCredential.user.uid };
+          dispatch(setUser(userData));
+          dispatch(persistAuth(userData));
         }
       } else {
         userCredential = await createUserWithEmailAndPassword(auth, email, password);
@@ -99,7 +101,9 @@ const AuthScreen = ({ navigation }) => {
         };
 
         await setDoc(doc(db, 'users', userCredential.user.uid), userData);
-        dispatch(setUser({ ...userData, id: userCredential.user.uid }));
+        const userDataWithId = { ...userData, id: userCredential.user.uid };
+        dispatch(setUser(userDataWithId));
+        dispatch(persistAuth(userDataWithId));
       }
     } catch (error) {
       let errorMessage = 'An error occurred';

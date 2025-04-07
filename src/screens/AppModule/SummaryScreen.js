@@ -1,229 +1,556 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
   StyleSheet,
-  ScrollView,
-  Dimensions,
+  FlatList,
+  TouchableOpacity,
+  Image,
+  ActivityIndicator,
+  Alert,
+  Share,
+  ScrollView
 } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
 import { useSelector } from 'react-redux';
-import { PieChart } from 'react-native-chart-kit';
+import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import { useIsFocused } from '@react-navigation/native';
+import {
+  collection,
+  query,
+  where,
+  getDocs,
+  doc,
+  getDoc,
+} from 'firebase/firestore';
+import { db } from '../../firebase/config';
+import { PieChart } from 'react-native-svg-charts';
+import { colors, typography, spacing, borderRadius } from '../../theme';
+import { useTheme } from '../../context/ThemeContext';
+import Card from '../../components/common/Card';
+import Header from '../../components/common/Header';
+import Button from '../../components/common/Button';
 
 const SummaryScreen = () => {
-  const theme = useSelector(state => state.theme.isDarkMode);
-  const { groups } = useSelector(state => state.groups);
-  const { user } = useSelector(state => state.auth);
+  const navigation = useNavigation();
+  const user = useSelector(state => state.auth.user);
+  const isFocused = useIsFocused();
+  const { isDarkMode, theme: appTheme } = useTheme();
+  const themeColors = isDarkMode ? colors.dark : colors.light;
+  const cardBackgroundColor = isDarkMode ? colors.dark.card : colors.light.card;
+  const groups = useSelector(state => state.groups.groups);
+  const [loading, setLoading] = useState(true);
+  const [expenses, setExpenses] = useState([]);
+  const [userBalances, setUserBalances] = useState({});
+
+  useEffect(() => {
+    // Set navigation options
+    navigation.setOptions({
+      title: 'Summary',
+      headerStyle: {
+        backgroundColor: themeColors.background,
+      },
+      headerTintColor: themeColors.text,
+      headerTitle: () => (
+        <View style={styles.headerTitleContainer}>
+          <Image 
+            source={require('../../assets/logo.png')} 
+            style={styles.logo} 
+            resizeMode="contain"
+          />
+          <Text style={[styles.headerTitle, { color: themeColors.text }]}>
+            Summary
+          </Text>
+        </View>
+      ),
+    });
+  }, [navigation, themeColors]);
+
+  useEffect(() => {
+    if (!user?.id) {
+      setLoading(false);
+      return;
+    }
+
+    // Fetch all expenses for the user
+    const expensesQuery = query(
+      collection(db, 'expenses'),
+      where('sharedBy', 'array-contains', { id: user.id })
+    );
+
+    const unsubscribe = getDocs(expensesQuery).then((snapshot) => {
+      const expensesData = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+      setExpenses(expensesData);
+      setLoading(false);
+    }, (error) => {
+      console.error('Error fetching expenses:', error);
+      setLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, [user]);
+
+  useEffect(() => {
+    // Calculate balances from groups
+    const balances = {};
+    groups.forEach(group => {
+      if (group.members) {
+        const userMember = group.members.find(member => member.id === user?.id);
+        if (userMember) {
+          const userBalance = Number(userMember.balance) || 0;
+          
+          group.members.forEach(member => {
+            if (member.id !== user?.id) {
+              if (!balances[member.id]) {
+                balances[member.id] = {
+                  name: member.name || 'Unknown',
+                  amount: 0,
+                };
+              }
+              
+              // Calculate relative balance between this user and the current user
+              const memberBalance = Number(member.balance) || 0;
+              // If user balance is positive, they are owed money
+              // If member balance is negative, they owe money
+              balances[member.id].amount += memberBalance;
+            }
+          });
+        }
+      }
+    });
+    
+    setUserBalances(balances);
+  }, [groups, user]);
 
   // Calculate total spent and received
   const totals = groups.reduce((acc, group) => {
-    group.expenses?.forEach(expense => {
-      if (expense.paidBy.id === user.uid) {
-        acc.spent += expense.amount;
+    const userMember = group.members?.find(member => member.id === user?.id);
+    if (userMember) {
+      const balance = Number(userMember.balance) || 0;
+      if (balance > 0) {
+        acc.spent += balance; // Money you're owed
+      } else {
+        acc.received += Math.abs(balance); // Money you owe
       }
-      const userShare = expense.sharedBy.find(
-        member => member.id === user.uid
-      )?.amount || 0;
-      acc.received += userShare;
-    });
+    }
     return acc;
   }, { spent: 0, received: 0 });
 
   const netBalance = totals.spent - totals.received;
+  
+  // Handle sharing summary
+  const handleShareSummary = async () => {
+    try {
+      const summaryText = `BillingBuddy Summary
 
-  // Calculate who owes who
-  const balances = {};
-  groups.forEach(group => {
-    group.members.forEach(member => {
-      if (member.id !== user.uid) {
-        if (!balances[member.id]) {
-          balances[member.id] = {
-            name: member.name,
-            amount: 0,
-          };
-        }
-        balances[member.id].amount += member.balance;
-      }
-    });
-  });
+Total you are owed: $${totals.spent.toFixed(2)}
+Total you owe: $${totals.received.toFixed(2)}
+Net balance: ${netBalance >= 0 ? '+' : ''}$${netBalance.toFixed(2)}
 
-  const chartData = Object.values(balances)
+${Object.values(userBalances)
+    .filter(balance => balance.amount !== 0)
+    .map(balance => `${balance.name}: ${balance.amount > 0 ? '+' : ''}$${balance.amount.toFixed(2)}`)
+    .join('\n')}`;
+      
+      await Share.share({
+        message: summaryText,
+        title: 'BillingBuddy Summary'
+      });
+    } catch (error) {
+      console.error('Error sharing summary:', error);
+      Alert.alert('Error', 'Could not share summary. Please try again.');
+    }
+  };
+
+  const chartData = Object.values(userBalances)
     .filter(balance => balance.amount !== 0)
     .map((balance, index) => ({
       name: balance.name,
-      amount: Math.abs(balance.amount),
-      color: [
-        '#4ade80',
-        '#facc15',
-        '#f472b6',
-        '#60a5fa',
-        '#c084fc',
-      ][index % 5],
-      legendFontColor: theme ? '#f1f1f1' : '#121212',
+      value: Math.abs(balance.amount),
+      key: `pie-${index}`,
+      svg: { 
+        fill: [
+          colors.primary,
+          colors.accent,
+          '#10B981',
+          '#60a5fa',
+          '#c084fc',
+        ][index % 5],
+      },
+      arc: { 
+        outerRadius: '100%', 
+        padAngle: 0.01,
+      },
+      amount: balance.amount,
     }));
 
-  return (
-    <ScrollView
-      style={[
-        styles.container,
-        { backgroundColor: theme ? '#121212' : '#ffffff' }
-      ]}
-    >
-      <View style={styles.section}>
-        <Text style={[
-          styles.sectionTitle,
-          { color: theme ? '#f1f1f1' : '#121212' }
-        ]}>
-          Your Balance
-        </Text>
-        <Text style={[
-          styles.balance,
-          { 
-            color: netBalance >= 0
-              ? theme ? '#4ade80' : '#22c55e'
-              : '#ef4444'
-          }
-        ]}>
-          ${netBalance?.toFixed(2)}
-        </Text>
-        <View style={styles.balanceDetails}>
-          <View style={styles.balanceItem}>
-            <Text style={[
-              styles.balanceLabel,
-              { color: theme ? '#f1f1f1' : '#121212' }
-            ]}>
-              Total Spent
-            </Text>
-            <Text style={[
-              styles.balanceValue,
-              { color: theme ? '#4ade80' : '#22c55e' }
-            ]}>
-              ${totals.spent?.toFixed(2)}
-            </Text>
-          </View>
-          <View style={styles.balanceItem}>
-            <Text style={[
-              styles.balanceLabel,
-              { color: theme ? '#f1f1f1' : '#121212' }
-            ]}>
-              Your Share
-            </Text>
-            <Text style={[
-              styles.balanceValue,
-              { color: theme ? '#f472b6' : '#ec4899' }
-            ]}>
-              ${totals.received?.toFixed(2)}
-            </Text>
-          </View>
-        </View>
+  if (loading) {
+    return (
+      <View style={[styles.container, { backgroundColor: themeColors.background }]}>
+        <Header title="Summary" />
+        <ActivityIndicator size="large" color={colors.primary} style={styles.loader} />
       </View>
+    );
+  }
 
-      {chartData.length > 0 && (
-        <View style={styles.section}>
-          <Text style={[
-            styles.sectionTitle,
-            { color: theme ? '#f1f1f1' : '#121212' }
-          ]}>
-            Expense Distribution
+  if (!user) {
+    return (
+      <View style={[styles.container, { backgroundColor: themeColors.background }]}>
+        <Header title="Summary" />
+        <View style={styles.emptyState}>
+          <Icon name="account-alert" size={64} color={themeColors.muted} />
+          <Text style={[styles.emptyText, { color: themeColors.text }]}>
+            Please log in to view your summary
           </Text>
-          <PieChart
-            data={chartData}
-            width={Dimensions.get('window').width - 32}
-            height={220}
-            chartConfig={{
-              color: (opacity = 1) => `rgba(255, 255, 255, ${opacity})`,
-            }}
-            accessor="amount"
-            backgroundColor="transparent"
-            paddingLeft="15"
-          />
         </View>
-      )}
+      </View>
+    );
+  }
 
-      <View style={styles.section}>
-        <Text style={[
-          styles.sectionTitle,
-          { color: theme ? '#f1f1f1' : '#121212' }
-        ]}>
-          Settlements
-        </Text>
-        {Object.values(balances).map((balance, index) => (
-          <View key={index} style={[
-            styles.settlementItem,
-            { backgroundColor: theme ? '#1e1e1e' : '#f9f9f9' }
-          ]}>
-            <Text style={[
-              styles.settlementName,
-              { color: theme ? '#f1f1f1' : '#121212' }
-            ]}>
-              {balance.name}
+  return (
+    <View style={[styles.container, { backgroundColor: themeColors.background }]}>
+      <Header 
+        title="Summary" 
+        rightComponent={
+          <TouchableOpacity onPress={handleShareSummary}>
+            <Icon name="share-variant" size={24} color={themeColors.text} />
+          </TouchableOpacity>
+        }
+      />
+      
+      <ScrollView style={styles.scrollContainer} contentContainerStyle={styles.contentContainer}>
+        {/* Balance overview card */}
+        <Card isDarkMode={isDarkMode} style={[styles.overviewCard, { backgroundColor: cardBackgroundColor }]}>
+          <Text style={[styles.cardTitle, { color: themeColors.text }]}>Balance Overview</Text>
+          
+          <View style={styles.balanceRow}>
+            <Text style={[styles.balanceLabel, { color: themeColors.text }]}>
+              Total you are owed:
             </Text>
-            <Text style={[
-              styles.settlementAmount,
-              { 
-                color: balance.amount >= 0
-                  ? theme ? '#4ade80' : '#22c55e'
-                  : '#ef4444'
-              }
-            ]}>
-              {balance.amount >= 0 ? 'Owes you' : 'You owe'} ${Math.abs(balance.amount)?.toFixed(2)}
+            <Text style={[styles.balanceValue, { color: themeColors.positive }]}>
+              ${totals.spent.toFixed(2)}
             </Text>
           </View>
-        ))}
-      </View>
-    </ScrollView>
+          
+          <View style={styles.balanceRow}>
+            <Text style={[styles.balanceLabel, { color: themeColors.text }]}>
+              Total you owe:
+            </Text>
+            <Text style={[styles.balanceValue, { color: themeColors.negative }]}>
+              ${totals.received.toFixed(2)}
+            </Text>
+          </View>
+          
+          <View style={[styles.netBalanceContainer, { backgroundColor: isDarkMode ? '#1A1A1A' : '#F3F4F6' }]}>
+            <Text style={[styles.netBalanceLabel, { color: themeColors.text }]}>
+              Net Balance:
+            </Text>
+            <Text 
+              style={[
+                styles.netBalanceValue, 
+                { color: netBalance >= 0 ? themeColors.positive : themeColors.negative }
+              ]}
+            >
+              ${Math.abs(netBalance).toFixed(2)} {netBalance >= 0 ? '(You are owed)' : '(You owe)'}
+            </Text>
+          </View>
+        </Card>
+
+        {/* Charts card */}
+        {chartData.length > 0 && (
+          <Card isDarkMode={isDarkMode} style={[styles.chartCard, { backgroundColor: cardBackgroundColor }]}>
+            <Text style={[styles.cardTitle, { color: themeColors.text }]}>Balance Distribution</Text>
+            
+            <View style={styles.chartContainer}>
+              <PieChart 
+                style={styles.chart} 
+                data={chartData} 
+                innerRadius="60%"
+                padAngle={0.02}
+              />
+              
+              <View style={styles.legendContainer}>
+                {chartData.map((item, index) => (
+                  <View key={item.key} style={styles.legendItem}>
+                    <View style={[styles.legendColor, { backgroundColor: item.svg.fill }]} />
+                    <Text style={[styles.legendText, { color: themeColors.text }]}>
+                      {item.name} ({item.amount >= 0 ? '+' : ''}{item.amount.toFixed(2)})
+                    </Text>
+                  </View>
+                ))}
+              </View>
+            </View>
+          </Card>
+        )}
+        
+        {/* Balance details card */}
+        <Card isDarkMode={isDarkMode} style={{ backgroundColor: cardBackgroundColor }}>
+          <Text style={[styles.cardTitle, { color: themeColors.text }]}>Balance Details</Text>
+          
+          {Object.values(userBalances).length > 0 ? (
+            Object.values(userBalances).map((item) => (
+              <View key={item.id} style={styles.balanceItemContainer}>
+                <View style={styles.balanceItemLeft}>
+                  <View style={[styles.avatar, { backgroundColor: isDarkMode ? '#333333' : '#E5E7EB' }]}>
+                    <Text style={[styles.avatarText, { color: themeColors.text }]}>
+                      {item.name.charAt(0).toUpperCase()}
+                    </Text>
+                  </View>
+                  <Text style={[styles.personName, { color: themeColors.text }]}>
+                    {item.name}
+                  </Text>
+                </View>
+                <Text 
+                  style={[
+                    styles.personBalance, 
+                    { color: item.amount >= 0 ? themeColors.positive : themeColors.negative }
+                  ]}
+                >
+                  {item.amount >= 0 ? '+' : ''}{item.amount.toFixed(2)}
+                </Text>
+              </View>
+            ))
+          ) : (
+            <View style={styles.emptyState}>
+              <Icon name="currency-usd-off" size={48} color={themeColors.muted} />
+              <Text style={[styles.emptyText, { color: themeColors.text }]}>
+                No balances to displayb
+              </Text>
+            </View>
+          )}
+        </Card>
+        
+        {/* Groups card */}
+        <Card isDarkMode={isDarkMode} style={{ backgroundColor: cardBackgroundColor }}>
+          <Text style={[styles.cardTitle, { color: themeColors.text }]}>Your Groups</Text>
+          
+          {groups.length > 0 ? (
+            groups.map((group) => {
+              const userMember = group.members?.find(member => member.id === user?.id);
+              const balance = userMember ? Number(userMember.balance) || 0 : 0;
+              
+              return (
+                <TouchableOpacity 
+                  key={group.id} 
+                  style={styles.groupItem}
+                  onPress={() => navigation.navigate('GroupDetail', { groupId: group.id })}
+                >
+                  <View style={styles.groupItemLeft}>
+                    <View style={[styles.groupIcon, { backgroundColor: isDarkMode ? '#333333' : '#E5E7EB' }]}>
+                      <Icon 
+                        name="account-group" 
+                        size={20} 
+                        color={isDarkMode ? colors.primary : colors.primary} 
+                      />
+                    </View>
+                    <Text style={[styles.groupName, { color: themeColors.text }]}>
+                      {group.name}
+                    </Text>
+                  </View>
+                  <Text 
+                    style={[
+                      styles.groupBalance, 
+                      { color: balance >= 0 ? themeColors.positive : themeColors.negative }
+                    ]}
+                  >
+                    {balance >= 0 ? '+' : ''}{balance.toFixed(2)}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })
+          ) : (
+            <View style={styles.emptyState}>
+              <Icon name="account-group-outline" size={48} color={themeColors.muted} />
+              <Text style={[styles.emptyText, { color: themeColors.text }]}>
+                You're not in any groups yet
+              </Text>
+              <Button
+                label="Create a Group"
+                variant="primary"
+                onPress={() => navigation.navigate('AddGroup')}
+                style={styles.createGroupButton}
+                isDarkMode={isDarkMode}
+              />
+            </View>
+          )}
+        </Card>
+      </ScrollView>
+    </View>
   );
+
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  section: {
-    padding: 16,
-    marginBottom: 8,
+  scrollContainer: {
+    flex: 1,
   },
-  sectionTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    marginBottom: 16,
+  contentContainer: {
+    padding: spacing.md,
+    paddingBottom: spacing['2xl'],
   },
-  balance: {
-    fontSize: 36,
-    fontWeight: 'bold',
-    textAlign: 'center',
-    marginBottom: 16,
+  overviewCard: {
+    marginBottom: spacing.md,
   },
-  balanceDetails: {
+  chartCard: {
+    marginBottom: spacing.md,
+  },
+  cardTitle: {
+    fontSize: typography.fontSize.lg,
+    fontWeight: '600',
+    marginBottom: spacing.md,
+  },
+  balanceRow: {
     flexDirection: 'row',
-    justifyContent: 'space-around',
-  },
-  balanceItem: {
-    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: spacing.sm,
   },
   balanceLabel: {
-    fontSize: 14,
-    marginBottom: 4,
+    fontSize: typography.fontSize.base,
   },
   balanceValue: {
-    fontSize: 18,
+    fontSize: typography.fontSize.base,
     fontWeight: '600',
   },
-  settlementItem: {
+  netBalanceContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 16,
-    borderRadius: 8,
-    marginBottom: 8,
+    padding: spacing.md,
+    borderRadius: borderRadius.md,
+    marginTop: spacing.sm,
   },
-  settlementName: {
-    fontSize: 16,
-    fontWeight: '500',
-  },
-  settlementAmount: {
-    fontSize: 16,
+  netBalanceLabel: {
+    fontSize: typography.fontSize.base,
     fontWeight: '600',
   },
+  netBalanceValue: {
+    fontSize: typography.fontSize.base,
+    fontWeight: '600',
+  },
+  chartContainer: {
+    height: 200,
+    marginBottom: spacing.md,
+  },
+  chart: {
+    height: 200,
+  },
+  legendContainer: {
+    marginTop: spacing.md,
+  },
+  legendItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: spacing.xs,
+  },
+  legendColor: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    marginRight: spacing.xs,
+  },
+  legendText: {
+    fontSize: typography.fontSize.sm,
+  },
+  balanceItemContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: spacing.sm,
+    borderBottomWidth: 1,
+    // borderBottomColor: isDarkMode => isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)',
+  },
+  balanceItemLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  avatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  avatarText: {
+    fontSize: typography.fontSize.base,
+    fontWeight: '600',
+  },
+  personName: {
+    fontSize: typography.fontSize.base,
+    marginLeft: spacing.sm,
+    flex: 1,
+  },
+  personBalance: {
+    fontSize: typography.fontSize.base,
+    fontWeight: '600',
+  },
+  groupItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: spacing.sm,
+    borderBottomColor: 'rgba(128,128,128,0.1)',
+    borderBottomWidth: 1,
+
+  },
+  groupItemLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  groupIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  groupName: {
+    fontSize: typography.fontSize.base,
+    marginLeft: spacing.sm,
+    flex: 1,
+  },
+  groupBalance: {
+    fontSize: typography.fontSize.base,
+    fontWeight: '600',
+  },
+  emptyState: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: spacing.xl,
+  },
+  emptyText: {
+    fontSize: typography.fontSize.base,
+    marginTop: spacing.md,
+    marginBottom: spacing.md,
+    textAlign: 'center',
+  },
+  createGroupButton: {
+    marginTop: spacing.md,
+    width: '80%',
+  },
+  loader: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  headerTitleContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  logo: {
+    width: 24,
+    height: 24,
+    marginRight: 8,
+  },
+  headerTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+  }
 });
 
 export default SummaryScreen;
