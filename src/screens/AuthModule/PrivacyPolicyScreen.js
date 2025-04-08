@@ -6,9 +6,13 @@ import {
   TouchableOpacity,
   View,
   SafeAreaView,
+  Image,
 } from 'react-native';
 import { useSelector } from 'react-redux';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import theme from '../../theme';
+import { images } from '../../components/images';
+
 
 const PrivacyPolicyScreen = ({ navigation }) => {
   const theme = useSelector(state => state.theme.isDarkMode);
@@ -18,19 +22,27 @@ const PrivacyPolicyScreen = ({ navigation }) => {
       styles.container,
       { backgroundColor: theme ? '#121212' : '#ffffff' }
     ]}>
-      <View style={styles.header}>
-        <TouchableOpacity
+      <View style={{
+        height: 56,
+        width: '100%',
+        backgroundColor: theme ? '#121212' : '#ffffff',
+        borderBottomWidth: 1,
+        borderBottomColor: 'rgba(0,0,0,0.1)',
+        alignItems: 'flex-start',
+        justifyContent: 'center',
+        marginTop: 25,
+        paddingHorizontal: 16,
+      }}>
+         <TouchableOpacity
           style={styles.backButton}
-          onPress={() => navigation.goBack()}
+          onPress={() => {
+            console.log('Back button pressed');
+            navigation.goBack();
+          }}
         >
-          <Icon
-            name="arrow-left"
-            size={24}
-            color={theme ? '#4ade80' : '#22c55e'}
-          />
+         <Image style={styles.backArrow} source={images.backArrow} />
         </TouchableOpacity>
       </View>
-
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.content}
@@ -161,11 +173,21 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 16,
     borderBottomWidth: 1,
+    marginTop: 16,
     borderBottomColor: 'rgba(0,0,0,0.1)',
   },
   backButton: {
     padding: 8,
-    marginLeft: -8,
+
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  backArrow: {
+    width: 30,
+    height: 30,
   },
   scrollView: {
     flex: 1,

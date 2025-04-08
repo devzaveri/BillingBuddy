@@ -14,11 +14,13 @@ import { useDispatch, useSelector } from 'react-redux';
 import { useNavigation } from '@react-navigation/native';
 import { launchImageLibrary } from 'react-native-image-picker';
 import { storage, auth, db } from '../../services/firebase';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
 import { doc, updateDoc } from 'firebase/firestore';
 import { toggleTheme } from '../../redux/slices/themeSlice';
-import { setProfileUrl, logout, updateUserName, clearAuth } from '../../redux/slices/authSlice';
+import { setProfileUrl, logout, updateUserName, clearAuth, persistAuth } from '../../redux/slices/authSlice';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import { images } from '../../components/images';
+import theme from '../../theme';
 
 const SettingsScreen = () => {
   const navigation = useNavigation();
@@ -31,22 +33,58 @@ const SettingsScreen = () => {
 
   const handleImagePick = async () => {
     try {
+      setLoading(true);
       const result = await launchImageLibrary({
         mediaType: 'photo',
-        quality: 0.5,
+        quality: 0.7,
+        maxWidth: 800,
+        maxHeight: 800,
       });
 
       if (result.assets && result.assets[0]) {
-        const imageRef = ref(storage, `profiles/${user.uid}`);
+        // Delete the old profile image if it exists
+        if (profileUrl) {
+          try {
+            // Get the old image reference from the URL
+            const oldImagePath = profileUrl.split('profiles%2F')[1].split('?')[0];
+            const oldImageRef = ref(storage, `profiles/${oldImagePath}`);
+            await deleteObject(oldImageRef);
+          } catch (deleteError) {
+            console.log('Old image not found or already deleted:', deleteError);
+          }
+        }
+
+        // Create a reference to the profile image with timestamp to ensure uniqueness
+        const timestamp = new Date().getTime();
+        const imageRef = ref(storage, `profiles/${user.id}_${timestamp}`);
+
+        // Upload the new image
         const response = await fetch(result.assets[0].uri);
         const blob = await response.blob();
         await uploadBytes(imageRef, blob);
         const downloadURL = await getDownloadURL(imageRef);
+
+        // Update Firestore first
+        const userRef = doc(db, 'users', user.id);
+        await updateDoc(userRef, { profileUrl: downloadURL });
+
+        // Create updated user data
+        const updatedUserData = {
+          ...user,
+          profileUrl: downloadURL
+        };
+
+        // Update Redux state and persist to AsyncStorage
         dispatch(setProfileUrl(downloadURL));
+        await dispatch(persistAuth(updatedUserData));
+
+        Alert.alert('Success', 'Profile picture updated successfully');
       }
     } catch (error) {
       console.error('Error updating profile picture:', error);
       Alert.alert('Error', 'Failed to update profile picture');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -69,11 +107,21 @@ const SettingsScreen = () => {
 
     setLoading(true);
     try {
-      const userRef = doc(db, 'users', user.id);
-      await updateDoc(userRef, { name: userName.trim() });
+      const trimmedName = userName.trim();
       
-      // Update in Redux and persist
-      dispatch(updateUserName(userName.trim()));
+      // Update Firestore first
+      const userRef = doc(db, 'users', user.id);
+      await updateDoc(userRef, { name: trimmedName });
+      
+      // Create updated user data with new name
+      const updatedUserData = {
+        ...user,
+        name: trimmedName
+      };
+      
+      // Update Redux state and persist to AsyncStorage
+      dispatch(updateUserName(trimmedName));
+      await dispatch(persistAuth(updatedUserData));
       
       Alert.alert('Success', 'Name updated successfully');
       setIsEditing(false);
@@ -157,6 +205,7 @@ const SettingsScreen = () => {
                     color: theme ? '#f1f1f1' : '#121212',
                     backgroundColor: theme ? '#1e1e1e' : '#f9f9f9',
                     borderColor: theme ? '#333333' : '#e5e5e5',
+                    textAlign: 'center',
                   }
                 ]}
                 value={userName}
@@ -168,7 +217,7 @@ const SettingsScreen = () => {
               <View style={styles.nameEditButtons}>
                 <TouchableOpacity 
                   style={[
-                    styles.nameEditButton,
+                    styles.nameEditSaveButton,
                     { backgroundColor: theme ? '#4ade80' : '#22c55e' }
                   ]}
                   onPress={handleUpdateName}
@@ -209,36 +258,13 @@ const SettingsScreen = () => {
               ]}>
                 {user?.name || 'Add your name'}
               </Text>
-              <Icon name="pencil" size={20} color={theme ? '#4ade80' : '#22c55e'} />
+              <Image resizeMode='contain' source={images.edit} style={styles.pencilIcon} />
             </TouchableOpacity>
           )}
         </View>
       </View>
 
       <View style={styles.section}>
-        <TouchableOpacity
-          style={[
-            styles.settingItem,
-            { backgroundColor: theme ? '#1e1e1e' : '#f9f9f9' }
-          ]}
-          onPress={() => dispatch(toggleTheme())}
-        >
-          <Text style={[
-            styles.settingText,
-            { color: theme ? '#f1f1f1' : '#121212' }
-          ]}>
-            Dark Mode
-          </Text>
-          <View style={[
-            styles.toggle,
-            { backgroundColor: theme ? '#4ade80' : '#d1d5db' }
-          ]}>
-            <View style={[
-              styles.toggleKnob,
-              { transform: [{ translateX: theme ? 20 : 0 }] }
-            ]} />
-          </View>
-        </TouchableOpacity>
 
         <TouchableOpacity
           style={[
@@ -302,17 +328,27 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     paddingHorizontal: 12,
     fontSize: 16,
+    alignItems: 'center',
   },
   nameEditButtons: {
     flexDirection: 'row',
-    gap: 8,
   },
   nameEditButton: {
-    flex: 1,
+    borderWidth: 1,
+    borderColor: "#e5e5e5",
+    paddingHorizontal: 12,
     height: 40,
     borderRadius: 8,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  nameEditSaveButton: {
+    paddingHorizontal: 12,
+    height: 40,
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 8,
   },
   nameEditButtonText: {
     color: '#ffffff',
@@ -332,6 +368,7 @@ const styles = StyleSheet.create({
   profileSection: {
     alignItems: 'center',
     marginBottom: 32,
+    paddingTop: 30,
   },
   profileImage: {
     width: 100,
@@ -390,6 +427,11 @@ const styles = StyleSheet.create({
     color: '#ffffff',
     fontSize: 16,
     fontWeight: 'bold',
+  },
+  pencilIcon: {
+    width: 15,
+    height: 15,
+    marginLeft: 8
   },
 });
 

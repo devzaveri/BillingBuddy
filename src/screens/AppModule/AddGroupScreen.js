@@ -9,11 +9,11 @@ import {
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
+  Image,
 } from 'react-native';
 import { useDispatch, useSelector } from 'react-redux';
 import { db } from '../../services/firebase';
 import { collection, addDoc, doc, getDoc, updateDoc, arrayUnion } from 'firebase/firestore';
-import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 
 const AddGroupScreen = ({ navigation }) => {
   const [activeTab, setActiveTab] = useState('create'); // 'create' or 'join'
@@ -215,11 +215,6 @@ const AddGroupScreen = ({ navigation }) => {
           ]}
           onPress={() => setActiveTab('create')}
         >
-          <Icon
-            name="plus-circle"
-            size={24}
-            color={activeTab === 'create' ? (theme ? '#4ade80' : '#22c55e') : (theme ? '#666666' : '#999999')}
-          />
           <Text style={[
             styles.tabText,
             { color: activeTab === 'create' ? (theme ? '#4ade80' : '#22c55e') : (theme ? '#666666' : '#999999') }
@@ -234,11 +229,7 @@ const AddGroupScreen = ({ navigation }) => {
           ]}
           onPress={() => setActiveTab('join')}
         >
-          <Icon
-            name="account-group"
-            size={24}
-            color={activeTab === 'join' ? (theme ? '#4ade80' : '#22c55e') : (theme ? '#666666' : '#999999')}
-          />
+         
           <Text style={[
             styles.tabText,
             { color: activeTab === 'join' ? (theme ? '#4ade80' : '#22c55e') : (theme ? '#666666' : '#999999') }
@@ -357,6 +348,7 @@ const AddGroupScreen = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    paddingVertical: 16,
   },
   tabContainer: {
     flexDirection: 'row',

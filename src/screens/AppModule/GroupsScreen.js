@@ -16,6 +16,8 @@ import { collection, query, where, onSnapshot } from 'firebase/firestore';
 import { setGroups, setLoading } from '../../redux/slices/groupSlice';
 import GroupCard from '../../components/GroupCard';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import { images } from '../../components/images';
+import theme from '../../theme';
 
 const GroupsScreen = () => {
   const navigation = useNavigation();
@@ -156,10 +158,10 @@ const GroupsScreen = () => {
             onRefresh={handleRefresh}
             ListEmptyComponent={
               <View style={styles.emptyContainer}>
-                <Icon 
-                  name="account-group" 
-                  size={64} 
-                  color={theme ? '#333333' : '#e5e5e5'} 
+                <Image 
+                  source={images.logo} 
+                  style={styles.logo} 
+                  resizeMode="contain"
                 />
                 <Text style={[
                   styles.emptyText,
@@ -196,6 +198,15 @@ const GroupsScreen = () => {
       styles.container,
       { backgroundColor: theme ? '#121212' : '#ffffff' }
     ]}>
+      <View style={styles.headerContainer}>
+        <Text style={[
+          styles.title,
+          
+        ]}>
+          BillingBuddy
+        </Text>
+
+      </View>
       <FlatList
         data={groups}
         renderItem={({ item }) => (
@@ -210,11 +221,11 @@ const GroupsScreen = () => {
         onRefresh={handleRefresh}
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
-            <Icon 
-              name="account-group" 
-              size={64} 
-              color={theme ? '#333333' : '#e5e5e5'} 
-            />
+            <Image 
+                  source={images.accountGroup} 
+                  style={styles.accountGroupIcon} 
+                  resizeMode="contain"
+                />
             <Text style={[
               styles.emptyText,
               { color: theme ? '#f1f1f1' : '#121212' }
@@ -238,7 +249,11 @@ const GroupsScreen = () => {
         ]}
         onPress={() => navigation.navigate('AddGroupScreen')}
       >
-        <Icon name="plus" size={24} color="#ffffff" />
+       <Image 
+         source={images.plus}
+         style={styles.plusIcon}
+         resizeMode="contain"
+       />
       </TouchableOpacity>
     </View>
   );
@@ -247,6 +262,22 @@ const GroupsScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    paddingVertical: 16,
+  },
+  headerContainer: {
+    height: 56,
+    width: '100%',
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(0,0,0,0.1)',
+    alignItems: 'flex-start',
+    justifyContent: 'center',
+    marginTop: 25,
+    paddingHorizontal: 16,
+  },
+  title: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#4ade80',
   },
   headerTitleContainer: {
     flexDirection: 'row',
@@ -257,6 +288,11 @@ const styles = StyleSheet.create({
     height: 24,
     marginRight: 8,
   },
+  accountGroupIcon: {
+    width: 64,
+    height: 64,
+        
+  },  
   headerTitle: {
     fontSize: 18,
     fontWeight: 'bold',
@@ -318,6 +354,11 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.25,
     shadowRadius: 3.84,
   },
+  plusIcon: {
+    width: 24,
+    height: 24,
+    tintColor: '#ffffff',
+  },  
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',

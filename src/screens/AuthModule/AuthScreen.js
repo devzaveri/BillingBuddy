@@ -20,6 +20,8 @@ import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { doc, setDoc, getDoc } from 'firebase/firestore';
 import { setUser, persistAuth } from '../../redux/slices/authSlice';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import { images } from '../../components/images';
+import theme from '../../theme';
 
 const AuthScreen = ({ navigation }) => {
   const dispatch = useDispatch();
@@ -185,7 +187,7 @@ const AuthScreen = ({ navigation }) => {
                   <Image source={{ uri: profileImage.uri }} style={styles.profileImage} />
                 ) : (
                   <View style={[styles.imagePlaceholder, { backgroundColor: theme ? '#1e1e1e' : '#f9f9f9' }]}>
-                    <Icon name="camera-plus" size={40} color={theme ? '#4ade80' : '#22c55e'} />
+                    <Image resizeMode="contain" source={images.user} style={styles.userImage} />
                   </View>
                 )}
               </TouchableOpacity>
@@ -391,6 +393,11 @@ const styles = StyleSheet.create({
   privacyText: {
     fontSize: 14,
   },
+  userImage: {
+    width: 40,
+    height: 40,
+    tintColor: "#4ade80",
+  }
 });
 
 export default AuthScreen;

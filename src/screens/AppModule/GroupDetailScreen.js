@@ -472,7 +472,7 @@ const GroupDetailScreen = () => {
           ]}>
             Expenses
           </Text>
-          {isMember ? (
+          {/* {isMember ? (
             <TouchableOpacity
               style={[
                 styles.addButton,
@@ -482,7 +482,7 @@ const GroupDetailScreen = () => {
             >
               <Text style={styles.addButtonText}>Add Expense</Text>
             </TouchableOpacity>
-          ) : null}
+          ) : null} */}
         </View>
 
         {expenses.length === 0 ? (
@@ -559,6 +559,9 @@ const GroupDetailScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    paddingVertical: 10,
+    paddingTop: "10%",
+    paddingHorizontal: 16,
   },
   balanceContainer: {
     marginVertical: 8,
@@ -578,6 +581,7 @@ const styles = StyleSheet.create({
   },
   expensesContainer: {
     flex: 1,
+    paddingTop: "5%",
   },
   expensesHeader: {
     flexDirection: 'row',

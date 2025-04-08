@@ -8,6 +8,7 @@ import {
 } from 'react-native';
 import { useSelector } from 'react-redux';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import { images } from './images';
 
 const GroupCard = ({ group, onPress }) => {
   const theme = useSelector(state => state.theme.isDarkMode);
@@ -71,25 +72,18 @@ const GroupCard = ({ group, onPress }) => {
 
         <View style={styles.details}>
           <View style={styles.infoRow}>
-            <Icon
-              name="currency-usd"
-              size={16}
-              color={theme ? '#a1a1aa' : '#71717a'}
-            />
+           
             <Text style={[
               styles.balance,
               { color: isPositive ? '#4ade80' : '#ef4444' }
             ]}>
+              {/* {'\u20B9'} */}
               {isPositive ? '+' : ''}{balance.toFixed(2)}
             </Text>
           </View>
 
           <View style={styles.infoRow}>
-            <Icon
-              name="clock-outline"
-              size={16}
-              color={theme ? '#a1a1aa' : '#71717a'}
-            />
+          <Image resizeMode='contain' source={images.clock} style={styles.clockIcon} />
             <Text style={[
               styles.date,
               { color: theme ? '#a1a1aa' : '#71717a' }
@@ -178,6 +172,11 @@ const styles = StyleSheet.create({
   infoRow: {
     flexDirection: 'row',
     alignItems: 'center',
+  },
+  clockIcon: {
+    width: 14,
+    height: 14,
+    tintColor: "#a1a1aa"
   },
   balance: {
     fontSize: 16,

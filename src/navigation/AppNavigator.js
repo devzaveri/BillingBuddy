@@ -4,7 +4,7 @@ import { createStackNavigator } from '@react-navigation/stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { useSelector } from 'react-redux';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Image } from 'react-native';
 
 // Import screens (we'll create these next)
 import SplashScreen from '../screens/AuthModule/SplashScreen';
@@ -17,6 +17,7 @@ import GroupDetailScreen from '../screens/AppModule/GroupDetailScreen';
 import AddExpenseScreen from '../screens/AppModule/AddExpenseScreen';
 import AddGroupScreen from '../screens/AppModule/AddGroupScreen';
 import ProfileScreen from '../screens/AppModule/ProfileScreen';
+import { images } from '../components/images';
 
 const Stack = createStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -62,7 +63,7 @@ const HomeTabs = () => {
         options={{
           tabBarLabel: 'Groups',
           tabBarIcon: ({ color, size }) => (
-            <Icon name="account-group" size={size} color={color} />
+            <Image source={images.accountGroup} style={{ width: size, height: size, tintColor: color }} />
           ),
         }}
       />
@@ -72,7 +73,7 @@ const HomeTabs = () => {
         options={{
           tabBarLabel: 'Summary',
           tabBarIcon: ({ color, size }) => (
-            <Icon name="chart-pie" size={size} color={color} />
+            <Image source={images.summaryLogo} style={{ width: size, height: size, tintColor: color }} />
           ),
         }}
       />
@@ -82,7 +83,7 @@ const HomeTabs = () => {
         options={{
           tabBarLabel: 'Settings',
           tabBarIcon: ({ color, size }) => (
-            <Icon name="cog" size={size} color={color} />
+            <Image source={images.settingsLogo} style={{ width: size, height: size, tintColor: color }} />
           ),
         }}
       />
@@ -103,7 +104,23 @@ const AppNavigator = () => {
       >
         <Stack.Screen name="Splash" component={SplashScreen} />
         {!isAuthenticated ? (
+          <>
           <Stack.Screen name="Auth" component={AuthScreen} />
+          <Stack.Screen 
+              name="PrivacyPolicy" 
+              component={PrivacyPolicyScreen}
+              options={({ navigation }) => ({
+                // header: () => (
+                //   <CustomHeader
+                //     title="Privacy Policy"
+                //     onBack={() => navigation.goBack()}
+                //     theme={theme}
+                //   />
+                // )
+              })}
+            />
+          </>
+          
         ) : (
           <>
             <Stack.Screen name="Home" component={HomeTabs} />
