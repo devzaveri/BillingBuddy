@@ -8,6 +8,7 @@ import {
   ActivityIndicator,
   Alert,
   Image,
+  SafeAreaView,
 } from 'react-native';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigation } from '@react-navigation/native';
@@ -132,7 +133,7 @@ const GroupsScreen = () => {
 
   if (loading && !refreshing) {
     return (
-      <View style={[
+      <SafeAreaView style={[
         styles.container,
         { backgroundColor: theme ? '#121212' : '#ffffff' }
       ]}>
@@ -189,12 +190,12 @@ const GroupsScreen = () => {
         >
           <Icon name="plus" size={24} color="#ffffff" />
         </TouchableOpacity>
-      </View>
+      </SafeAreaView>
     );
   }
 
   return (
-    <View style={[
+    <SafeAreaView style={[
       styles.container,
       { backgroundColor: theme ? '#121212' : '#ffffff' }
     ]}>
@@ -255,7 +256,7 @@ const GroupsScreen = () => {
          resizeMode="contain"
        />
       </TouchableOpacity>
-    </View>
+    </SafeAreaView>
   );
 };
 
@@ -265,13 +266,13 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
   },
   headerContainer: {
-    height: 56,
+    height: '7%',
     width: '100%',
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(0,0,0,0.1)',
     alignItems: 'flex-start',
     justifyContent: 'center',
-    marginTop: 25,
+    // marginTop: 25,
     paddingHorizontal: 16,
   },
   title: {

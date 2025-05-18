@@ -9,4 +9,7 @@ export const images = {
     summaryLogo: require('../assets/summaryLogo.png'),
     settingsLogo: require('../assets/settingsLogo.png'),
     CreateGroup: require('../assets/CreateGroup.png'),
+    share: require('../assets/share.png'),
+    expanseGroup: require('../assets/expanseGroup.png'),
+    copy: require('../assets/copy.png'),
 }

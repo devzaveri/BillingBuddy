@@ -11,6 +11,9 @@ import {
   Clipboard,
   ToastAndroid,
   Platform,
+  SafeAreaView,
+  ScrollView,
+  Dimensions,
 } from 'react-native';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigation, useRoute } from '@react-navigation/native';
@@ -31,6 +34,8 @@ import {
 import { setCurrentGroup, setExpenses } from '../../redux/slices/groupSlice';
 import ExpenseCard from '../../components/ExpenseCard';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import { images } from '../../components/images';
+  const windowsHeight = Dimensions.get("window").height
 
 const GroupDetailScreen = () => {
   const navigation = useNavigation();
@@ -43,7 +48,6 @@ const GroupDetailScreen = () => {
   const [joining, setJoining] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [selectedExpense, setSelectedExpense] = useState(null);
-
   const isMember = currentGroup?.memberIds?.includes(user?.id);
   
   const getUserBalance = () => {
@@ -335,14 +339,21 @@ const GroupDetailScreen = () => {
   };
 
   return (
-    <View style={[
+    <SafeAreaView style={[
       styles.container,
       { backgroundColor: theme ? '#121212' : '#ffffff' }
     ]}>
+      <ScrollView>
       <View style={[
         styles.header,
         { backgroundColor: theme ? '#1e1e1e' : '#f9f9f9' }
       ]}>
+        <TouchableOpacity
+          style={styles.backButton}
+          onPress={() => navigation.goBack()}
+        >
+        <Image source={images.backArrow} style={styles.backIcon} />
+        </TouchableOpacity>
         <Text style={[
           styles.groupName,
           { color: theme ? '#f1f1f1' : '#121212' }
@@ -377,7 +388,7 @@ const GroupDetailScreen = () => {
               style={styles.copyButton}
               onPress={copyGroupId}
             >
-              <Icon name="content-copy" size={18} color={theme ? '#4ade80' : '#22c55e'} />
+              <Image source={images.copy} resizeMode='contain' style={styles.CopyIcon} />
             </TouchableOpacity>
           </View>
         </View>
@@ -494,6 +505,7 @@ const GroupDetailScreen = () => {
           </Text>
         ) : (
           <FlatList
+          scrollEnabled={false}
             data={expenses}
             renderItem={({ item }) => (
               <TouchableOpacity 
@@ -552,7 +564,8 @@ const GroupDetailScreen = () => {
           )}
         </View>
       )}
-    </View>
+      </ScrollView>
+    </SafeAreaView>
   );
 };
 
@@ -560,8 +573,21 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     paddingVertical: 10,
-    paddingTop: "10%",
     paddingHorizontal: 16,
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(0,0,0,0.1)',
+  },
+  backButton: {
+    padding: 8,
+    marginRight: 8,
+    paddingTop: windowsHeight > 700 ? 20 : 2,
+    alignSelf: 'flex-start'
   },
   balanceContainer: {
     marginVertical: 8,
@@ -752,6 +778,14 @@ const styles = StyleSheet.create({
     color: '#ffffff',
     fontWeight: 'bold',
   },
+  backIcon: {
+    height:24,
+    width:24
+  },
+  CopyIcon: {
+    height: 18,
+    width:18
+  }
 });
 
 export default GroupDetailScreen;

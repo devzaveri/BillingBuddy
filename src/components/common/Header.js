@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, StatusBar } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, StatusBar, SafeAreaView } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { colors, typography, spacing } from '../../theme';
 import { useNavigation } from '@react-navigation/native';
@@ -37,7 +37,7 @@ const Header = ({
         backgroundColor={isDarkMode ? colors.dark.background : colors.light.background}
         barStyle={isDarkMode ? 'light-content' : 'dark-content'}
       />
-      <View
+      <SafeAreaView
         style={[
           styles.container,
           { backgroundColor: themeColors.background },
@@ -75,14 +75,15 @@ const Header = ({
             {rightComponent}
           </View>
         )}
-      </View>
+      </SafeAreaView>
     </>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
-    height: 56,
+    marginTop:"10%",
+    
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -11,6 +11,7 @@ import {
   Platform,
   ScrollView,
   ActivityIndicator,
+  SafeAreaView,
 } from 'react-native';
 import { useDispatch, useSelector } from 'react-redux';
 import { launchImageLibrary } from 'react-native-image-picker';
@@ -69,15 +70,24 @@ const AuthScreen = ({ navigation }) => {
   };
 
   const handleAuth = async () => {
+    console.log("Signup=====>");
     setError('');
     if (!validateInputs()) return;
 
     setLoading(true);
     try {
       let userCredential;
+      
+      
       if (isLogin) {
+        console.log("isLogin==>" , isLogin);
+        
         userCredential = await signInWithEmailAndPassword(auth, email, password);
+        console.log("userCredential=====>" , userCredential);
+        
         const userDoc = await getDoc(doc(db, 'users', userCredential.user.uid));
+        console.log("userDoc===>" , userDoc);
+        
         if (userDoc.exists()) {
           const userData = { ...userDoc.data(), id: userCredential.user.uid };
           dispatch(setUser(userData));
@@ -109,6 +119,8 @@ const AuthScreen = ({ navigation }) => {
       }
     } catch (error) {
       let errorMessage = 'An error occurred';
+      console.log("error=======>" , error);
+      
       switch (error.code) {
         case 'auth/invalid-email':
           errorMessage = 'Please enter a valid email address';
@@ -138,13 +150,14 @@ const AuthScreen = ({ navigation }) => {
   };
 
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      style={[
-        styles.container,
-        { backgroundColor: theme ? '#121212' : '#ffffff' }
-      ]}
-    >
+    <SafeAreaView style={[
+      styles.container,
+      { backgroundColor: theme ? '#121212' : '#ffffff' }
+    ]}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={styles.keyboardAvoidingView}
+      >
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         keyboardShouldPersistTaps="handled"
@@ -294,11 +307,15 @@ const AuthScreen = ({ navigation }) => {
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
+    flex: 1,
+  },
+  keyboardAvoidingView: {
     flex: 1,
   },
   scrollContent: {

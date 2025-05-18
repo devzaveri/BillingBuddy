@@ -8,6 +8,7 @@ import {
   Image,
   Alert,
   ActivityIndicator,
+  SafeAreaView,
 } from 'react-native';
 import { useDispatch, useSelector } from 'react-redux';
 import { launchImageLibrary } from 'react-native-image-picker';
@@ -102,7 +103,7 @@ const ProfileScreen = ({ navigation }) => {
   };
 
   return (
-    <View style={[
+    <SafeAreaView style={[
       styles.container,
       { backgroundColor: theme ? '#121212' : '#ffffff' }
     ]}>
@@ -191,7 +192,7 @@ const ProfileScreen = ({ navigation }) => {
           )}
         </TouchableOpacity>
       </View>
-    </View>
+    </SafeAreaView>
   );
 };
 

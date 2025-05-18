@@ -11,11 +11,17 @@ import {
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
+  SafeAreaView,
+  Image,
+  Dimensions,
 } from 'react-native';
+import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useSelector } from 'react-redux';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { db } from '../../services/firebase';
 import { collection, addDoc, updateDoc, doc, runTransaction } from 'firebase/firestore';
+import { images } from '../../components/images';
+const windowsHeight = Dimensions.get('window').height
 
 const AddExpenseScreen = () => {
   const navigation = useNavigation();
@@ -90,11 +96,11 @@ const AddExpenseScreen = () => {
 
           // Get the current group data
           const groupRef = doc(db, 'groups', currentGroup.id);
-          
+
           // Update member balances
           const updatedMembers = currentGroup.members.map(member => {
             const currentBalance = Number(member.balance) || 0;
-            
+
             if (member.id === user.id) {
               // The person who paid gets credit for the full amount minus their share
               return {
@@ -108,14 +114,14 @@ const AddExpenseScreen = () => {
               balance: currentBalance - (selectedMembers[member.id] ? splitAmount : 0),
             };
           });
-          
+
           // Ensure totalBalance is a number
           const currentTotalBalance = Number(currentGroup.totalBalance) || 0;
           const currentTotalExpenses = Number(currentGroup.totalExpenses || 0);
-          
+
           // Set the expense data
           transaction.set(expenseRef, expenseData);
-          
+
           // Update the group data
           transaction.update(groupRef, {
             members: updatedMembers,
@@ -155,117 +161,154 @@ const AddExpenseScreen = () => {
 
   if (!currentGroup) {
     return (
-      <View style={[styles.container, { backgroundColor: theme ? '#121212' : '#ffffff' }]}>
+      <SafeAreaView style={[styles.container, { backgroundColor: theme ? '#121212' : '#ffffff' }]}>
         <ActivityIndicator size="large" color={theme ? '#4ade80' : '#22c55e'} />
-      </View>
+      </SafeAreaView>
     );
   }
 
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      style={{ flex: 1 }}
-    >
+    <SafeAreaView style={[styles.container, { backgroundColor: theme ? '#121212' : '#ffffff' }]}>
+      
+      <View style={styles.header}>
+        <TouchableOpacity
+          style={styles.backButton}
+          onPress={() => navigation.goBack()}
+        >
+                  <Image source={images.backArrow} style={styles.backIcon} />
+          
+        </TouchableOpacity>
+        <Text style={[styles.headerTitle, { color: theme ? '#f1f1f1' : '#121212' }]}>
+          Add Expense
+        </Text>
+        <View style={styles.headerRight} />
+      </View>
+      
       <ScrollView
-        style={[styles.container, { backgroundColor: theme ? '#121212' : '#ffffff' }]}
+        style={styles.scrollView}
         contentContainerStyle={styles.contentContainer}
       >
-        <Text style={[
-          styles.label,
-          { color: theme ? '#f1f1f1' : '#121212' }
-        ]}>
-          Title
-        </Text>
-        <TextInput
-          style={[
-            styles.input,
-            { 
-              backgroundColor: theme ? '#1e1e1e' : '#f9f9f9',
-              color: theme ? '#f1f1f1' : '#121212'
-            }
-          ]}
-          placeholder="What's this expense for?"
-          placeholderTextColor={theme ? '#666666' : '#999999'}
-          value={title}
-          onChangeText={setTitle}
-        />
+      <Text style={[
+        styles.label,
+        { color: theme ? '#f1f1f1' : '#121212' }
+      ]}>
+        Title
+      </Text>
+      <TextInput
+        style={[
+          styles.input,
+          {
+            backgroundColor: theme ? '#1e1e1e' : '#f9f9f9',
+            color: theme ? '#f1f1f1' : '#121212'
+          }
+        ]}
+        placeholder="What's this expense for?"
+        placeholderTextColor={theme ? '#666666' : '#999999'}
+        value={title}
+        onChangeText={setTitle}
+      />
 
-        <Text style={[
-          styles.label,
-          { color: theme ? '#f1f1f1' : '#121212' }
-        ]}>
-          Amount
-        </Text>
-        <TextInput
-          style={[
-            styles.input,
-            { 
-              backgroundColor: theme ? '#1e1e1e' : '#f9f9f9',
-              color: theme ? '#f1f1f1' : '#121212'
-            }
-          ]}
-          placeholder="0.00"
-          placeholderTextColor={theme ? '#666666' : '#999999'}
-          value={amount}
-          onChangeText={setAmount}
-          keyboardType="decimal-pad"
-        />
+      <Text style={[
+        styles.label,
+        { color: theme ? '#f1f1f1' : '#121212' }
+      ]}>
+        Amount
+      </Text>
+      <TextInput
+        style={[
+          styles.input,
+          {
+            backgroundColor: theme ? '#1e1e1e' : '#f9f9f9',
+            color: theme ? '#f1f1f1' : '#121212'
+          }
+        ]}
+        placeholder="0.00"
+        placeholderTextColor={theme ? '#666666' : '#999999'}
+        value={amount}
+        onChangeText={setAmount}
+        keyboardType="decimal-pad"
+      />
 
-        <Text style={[
-          styles.label,
-          { color: theme ? '#f1f1f1' : '#121212' }
-        ]}>
-          Split with
-        </Text>
-        <View style={styles.membersList}>
-          {currentGroup.members.map(member => (
-            <View key={member.id} style={styles.memberItem}>
-              <Text style={[
-                styles.memberName,
-                { color: theme ? '#f1f1f1' : '#121212' }
-              ]}>
-                {member.name}
-              </Text>
-              <Switch
-                value={selectedMembers[member.id]}
-                onValueChange={(value) => 
-                  setSelectedMembers(prev => ({
-                    ...prev,
-                    [member.id]: value
-                  }))
-                }
-                trackColor={{
-                  false: theme ? '#666666' : '#d1d5db',
-                  true: theme ? '#4ade80' : '#22c55e'
-                }}
-              />
-            </View>
-          ))}
-        </View>
+      <Text style={[
+        styles.label,
+        { color: theme ? '#f1f1f1' : '#121212' }
+      ]}>
+        Split with
+      </Text>
+      <View style={styles.membersList}>
+        {currentGroup.members.map(member => (
+          <View key={member.id} style={styles.memberItem}>
+            <Text style={[
+              styles.memberName,
+              { color: theme ? '#f1f1f1' : '#121212' }
+            ]}>
+              {member.name}
+            </Text>
+            <Switch
+              value={selectedMembers[member.id]}
+              onValueChange={(value) =>
+                setSelectedMembers(prev => ({
+                  ...prev,
+                  [member.id]: value
+                }))
+              }
+              trackColor={{
+                false: theme ? '#666666' : '#d1d5db',
+                true: theme ? '#4ade80' : '#22c55e'
+              }}
+            />
+          </View>
+        ))}
+      </View>
 
-        <TouchableOpacity
-          style={[
-            styles.button, 
-            { backgroundColor: theme ? '#4ade80' : '#22c55e' },
-            loading && styles.buttonDisabled
-          ]}
-          onPress={handleSubmit}
-          disabled={loading}
-        >
-          {loading ? (
-            <ActivityIndicator color="#ffffff" />
-          ) : (
-            <Text style={styles.buttonText}>Add Expense</Text>
-          )}
-        </TouchableOpacity>
+      <TouchableOpacity
+        style={[
+          styles.button,
+          { backgroundColor: theme ? '#4ade80' : '#22c55e' },
+          loading && styles.buttonDisabled
+        ]}
+        onPress={handleSubmit}
+        disabled={loading}
+      >
+        {loading ? (
+          <ActivityIndicator color="#ffffff" />
+        ) : (
+          <Text style={styles.buttonText}>Add Expense</Text>
+        )}
+      </TouchableOpacity>
       </ScrollView>
-    </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: "#fff",
+    paddingVertical: windowsHeight > 700 ? "8%" : '5%'
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e5e5e5',
+  },
+  backButton: {
+    padding: 8,
+  },
+  headerTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
+  headerRight: {
+    width: 40,
+  },
+  scrollView: {
+    flex: 1,
+    paddingHorizontal: "5%",
   },
   buttonDisabled: {
     opacity: 0.7,
@@ -309,6 +352,10 @@ const styles = StyleSheet.create({
     color: '#ffffff',
     fontSize: 16,
     fontWeight: 'bold',
+  },
+   backIcon: {
+    height: 24,
+    width: 24
   },
 });
 

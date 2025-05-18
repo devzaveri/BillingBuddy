@@ -9,7 +9,8 @@ import {
   ActivityIndicator,
   Alert,
   Share,
-  ScrollView
+  ScrollView,
+  Dimensions
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useSelector } from 'react-redux';
@@ -30,7 +31,8 @@ import { useTheme } from '../../context/ThemeContext';
 import Card from '../../components/common/Card';
 import Header from '../../components/common/Header';
 import Button from '../../components/common/Button';
-
+import { images } from '../../components/images';
+const windowsHeight = Dimensions.get('window').height
 const SummaryScreen = () => {
   const navigation = useNavigation();
   const user = useSelector(state => state.auth.user);
@@ -78,19 +80,30 @@ const SummaryScreen = () => {
       where('sharedBy', 'array-contains', { id: user.id })
     );
 
-    const unsubscribe = getDocs(expensesQuery).then((snapshot) => {
-      const expensesData = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      }));
-      setExpenses(expensesData);
-      setLoading(false);
-    }, (error) => {
+    // Using getDocs instead of onSnapshot since we only need to fetch once
+    let isActive = true; // Flag to handle component unmount
+    
+    getDocs(expensesQuery).then((snapshot) => {
+      // Only update state if component is still mounted
+      if (isActive) {
+        const expensesData = snapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        }));
+        setExpenses(expensesData);
+        setLoading(false);
+      }
+    }).catch((error) => {
       console.error('Error fetching expenses:', error);
-      setLoading(false);
+      if (isActive) {
+        setLoading(false);
+      }
     });
 
-    return () => unsubscribe();
+    // Cleanup function that sets the flag to false
+    return () => {
+      isActive = false;
+    };
   }, [user]);
 
   useEffect(() => {
@@ -216,7 +229,7 @@ ${Object.values(userBalances)
         title="Summary" 
         rightComponent={
           <TouchableOpacity onPress={handleShareSummary}>
-            <Icon name="share-variant" size={24} color={themeColors.text} />
+            <Image source={images.share} style={styles.Backicon} />
           </TouchableOpacity>
         }
       />
@@ -340,11 +353,7 @@ ${Object.values(userBalances)
                 >
                   <View style={styles.groupItemLeft}>
                     <View style={[styles.groupIcon, { backgroundColor: isDarkMode ? '#333333' : '#E5E7EB' }]}>
-                      <Icon 
-                        name="account-group" 
-                        size={20} 
-                        color={isDarkMode ? colors.primary : colors.primary} 
-                      />
+                     <Image resizeMode='contain' source={images.accountGroup} style={styles.expanseGroupIcon} />
                     </View>
                     <Text style={[styles.groupName, { color: themeColors.text }]}>
                       {group.name}
@@ -386,6 +395,7 @@ ${Object.values(userBalances)
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    paddingVertical: windowsHeight > 700 ? '6%' : 0
   },
   scrollContainer: {
     flex: 1,
@@ -399,6 +409,7 @@ const styles = StyleSheet.create({
   },
   chartCard: {
     marginBottom: spacing.md,
+    
   },
   cardTitle: {
     fontSize: typography.fontSize.lg,
@@ -434,14 +445,19 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   chartContainer: {
-    height: 200,
-    marginBottom: spacing.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: spacing.md,
   },
   chart: {
     height: 200,
+    width: 200,
+    alignSelf: 'center',
   },
   legendContainer: {
     marginTop: spacing.md,
+    width: '100%',
+    paddingHorizontal: spacing.md,
   },
   legendItem: {
     flexDirection: 'row',
@@ -458,16 +474,15 @@ const styles = StyleSheet.create({
     fontSize: typography.fontSize.sm,
   },
   balanceItemContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+   flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: spacing.sm,
-    borderBottomWidth: 1,
+marginTop: 5
     // borderBottomColor: isDarkMode => isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)',
   },
   balanceItemLeft: {
     flexDirection: 'row',
     alignItems: 'center',
+    flex:1
   },
   avatar: {
     width: 40,
@@ -501,6 +516,7 @@ const styles = StyleSheet.create({
   groupItemLeft: {
     flexDirection: 'row',
     alignItems: 'center',
+    flex:1,
   },
   groupIcon: {
     width: 36,
@@ -550,6 +566,15 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 18,
     fontWeight: 'bold',
+  },
+  Backicon: {
+     width: 20,
+    height: 20,
+  },
+  expanseGroupIcon: {
+    width: 24,
+    height: 24,
+    tintColor: "#000"
   }
 });
 

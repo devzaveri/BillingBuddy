@@ -10,11 +10,13 @@ import {
   KeyboardAvoidingView,
   Platform,
   Image,
+  SafeAreaView,
+  Dimensions,
 } from 'react-native';
 import { useDispatch, useSelector } from 'react-redux';
 import { db } from '../../services/firebase';
 import { collection, addDoc, doc, getDoc, updateDoc, arrayUnion } from 'firebase/firestore';
-
+const windowsHeight = Dimensions.get('window').height
 const AddGroupScreen = ({ navigation }) => {
   const [activeTab, setActiveTab] = useState('create'); // 'create' or 'join'
   const [groupName, setGroupName] = useState('');
@@ -202,10 +204,11 @@ const AddGroupScreen = ({ navigation }) => {
   };
 
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      style={[styles.container, { backgroundColor: theme ? '#121212' : '#ffffff' }]}
-    >
+    <SafeAreaView style={[styles.container, { backgroundColor: theme ? '#121212' : '#ffffff' }]}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={{ flex: 1 }}
+      >
       <View style={styles.tabContainer}>
         <TouchableOpacity
           style={[
@@ -342,13 +345,15 @@ const AddGroupScreen = ({ navigation }) => {
         </View>
       )}
     </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    paddingVertical: 16,
+    paddingVertical:windowsHeight > 700 ? 30 : 16,
+    
   },
   tabContainer: {
     flexDirection: 'row',
