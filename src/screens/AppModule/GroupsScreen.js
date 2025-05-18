@@ -19,6 +19,7 @@ import GroupCard from '../../components/GroupCard';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { images } from '../../components/images';
 import theme from '../../theme';
+import { getTopPadding } from '../../utils/deviceUtils';
 
 const GroupsScreen = () => {
   const navigation = useNavigation();
@@ -263,7 +264,8 @@ const GroupsScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    paddingVertical: 16,
+    paddingTop: getTopPadding(),
+    paddingBottom: 16,
   },
   headerContainer: {
     height: '7%',

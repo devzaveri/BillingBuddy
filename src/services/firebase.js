@@ -1,5 +1,5 @@
 import { initializeApp } from 'firebase/app';
-import { getAuth } from 'firebase/auth';
+import { getAuth, setPersistence, browserLocalPersistence } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
 
@@ -16,6 +16,22 @@ const firebaseConfig = {
 
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
+
+// Initialize Auth with persistence
 export const auth = getAuth(app);
+
+// Set persistence to LOCAL (stored in indexedDB)
+try {
+  setPersistence(auth, browserLocalPersistence);
+} catch (error) {
+  console.error('Error setting auth persistence:', error);
+}
+
+// Initialize Firestore and Storage
 export const db = getFirestore(app);
 export const storage = getStorage(app);
+
+// Fix for Firebase Storage bucket URL if needed
+if (storage.bucket) {
+  storage.bucket.name = firebaseConfig.storageBucket;
+}

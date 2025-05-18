@@ -33,6 +33,12 @@ const SettingsScreen = () => {
 
   const handleImagePick = async () => {
     try {
+      // Check if user is authenticated
+      if (!user || !user.id) {
+        Alert.alert('Error', 'You must be logged in to update your profile picture');
+        return;
+      }
+
       setLoading(true);
       const result = await launchImageLibrary({
         mediaType: 'photo',
@@ -46,22 +52,42 @@ const SettingsScreen = () => {
         if (profileUrl) {
           try {
             // Get the old image reference from the URL
-            const oldImagePath = profileUrl.split('profiles%2F')[1].split('?')[0];
-            const oldImageRef = ref(storage, `profiles/${oldImagePath}`);
-            await deleteObject(oldImageRef);
+            const oldImagePath = profileUrl.split('profiles%2F')[1]?.split('?')[0];
+            if (oldImagePath) {
+              const oldImageRef = ref(storage, `profiles/${oldImagePath}`);
+              await deleteObject(oldImageRef);
+            }
           } catch (deleteError) {
             console.log('Old image not found or already deleted:', deleteError);
+            // Continue with upload even if delete fails
           }
+        }
+
+        // Get current auth state
+        const currentUser = auth.currentUser;
+        if (!currentUser) {
+          throw new Error('Authentication required. Please log in again.');
         }
 
         // Create a reference to the profile image with timestamp to ensure uniqueness
         const timestamp = new Date().getTime();
-        const imageRef = ref(storage, `profiles/${user.id}_${timestamp}`);
+        const fileName = `${user.id}_${timestamp}`;
+        const imageRef = ref(storage, `profiles/${fileName}`);
 
         // Upload the new image
         const response = await fetch(result.assets[0].uri);
         const blob = await response.blob();
-        await uploadBytes(imageRef, blob);
+        
+        // Upload with metadata to ensure proper permissions
+        const metadata = {
+          contentType: 'image/jpeg',
+          customMetadata: {
+            'userId': user.id,
+            'uploadedAt': new Date().toISOString()
+          }
+        };
+        
+        await uploadBytes(imageRef, blob, metadata);
         const downloadURL = await getDownloadURL(imageRef);
 
         // Update Firestore first
@@ -82,7 +108,7 @@ const SettingsScreen = () => {
       }
     } catch (error) {
       console.error('Error updating profile picture:', error);
-      Alert.alert('Error', 'Failed to update profile picture');
+      Alert.alert('Error', `Failed to update profile picture: ${error.message}`);
     } finally {
       setLoading(false);
     }

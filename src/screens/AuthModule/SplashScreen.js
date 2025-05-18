@@ -2,6 +2,7 @@ import React, { useEffect } from 'react';
 import { View, Text, StyleSheet, Animated } from 'react-native';
 import { useSelector } from 'react-redux';
 import { useNavigation } from '@react-navigation/native';
+import { getTopPadding } from '../../utils/deviceUtils';
 
 const SplashScreen = () => {
   const navigation = useNavigation();
@@ -55,6 +56,7 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    paddingTop: getTopPadding(),
   },
   title: {
     fontSize: 32,

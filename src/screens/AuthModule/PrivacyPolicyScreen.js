@@ -12,6 +12,7 @@ import { useSelector } from 'react-redux';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import theme from '../../theme';
 import { images } from '../../components/images';
+import { getTopPadding } from '../../utils/deviceUtils';
 
 
 const PrivacyPolicyScreen = ({ navigation }) => {
@@ -166,6 +167,7 @@ const PrivacyPolicyScreen = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    paddingTop: getTopPadding(),
   },
   header: {
     height: 56,

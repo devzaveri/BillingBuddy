@@ -23,6 +23,7 @@ import { setUser, persistAuth } from '../../redux/slices/authSlice';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { images } from '../../components/images';
 import theme from '../../theme';
+import { getTopPadding } from '../../utils/deviceUtils';
 
 const AuthScreen = ({ navigation }) => {
   const dispatch = useDispatch();
@@ -314,6 +315,7 @@ const AuthScreen = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    paddingTop: getTopPadding(),
   },
   keyboardAvoidingView: {
     flex: 1,

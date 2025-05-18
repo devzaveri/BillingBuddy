@@ -21,6 +21,7 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import { db } from '../../services/firebase';
 import { collection, addDoc, updateDoc, doc, runTransaction } from 'firebase/firestore';
 import { images } from '../../components/images';
+import { getTopPadding } from '../../utils/deviceUtils';
 const windowsHeight = Dimensions.get('window').height
 
 const AddExpenseScreen = () => {
@@ -285,7 +286,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#fff",
-    paddingVertical: windowsHeight > 700 ? "8%" : '5%'
+    paddingTop: getTopPadding()
   },
   header: {
     flexDirection: 'row',
