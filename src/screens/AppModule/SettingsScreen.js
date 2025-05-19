@@ -9,13 +9,15 @@ import {
   Alert,
   TextInput,
   ActivityIndicator,
+  Modal,
 } from 'react-native';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigation } from '@react-navigation/native';
 import { launchImageLibrary } from 'react-native-image-picker';
 import { storage, auth, db } from '../../services/firebase';
+import { deleteUser, EmailAuthProvider, reauthenticateWithCredential } from 'firebase/auth';
 import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
-import { doc, updateDoc } from 'firebase/firestore';
+import { doc, updateDoc, deleteDoc, collection, query, where, getDocs } from 'firebase/firestore';
 import { toggleTheme } from '../../redux/slices/themeSlice';
 import { setProfileUrl, logout, updateUserName, clearAuth, persistAuth } from '../../redux/slices/authSlice';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
@@ -30,6 +32,10 @@ const SettingsScreen = () => {
   const [userName, setUserName] = useState(user?.name || '');
   const [isEditing, setIsEditing] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [password, setPassword] = useState('');
+  const [deleteLoading, setDeleteLoading] = useState(false);
+  const [deleteError, setDeleteError] = useState('');
 
   const handleImagePick = async () => {
     try {
@@ -188,6 +194,120 @@ const SettingsScreen = () => {
     );
   };
 
+  const handleDeleteAccount = () => {
+    setShowDeleteModal(true);
+  };
+
+  const closeDeleteModal = () => {
+    setShowDeleteModal(false);
+    setPassword('');
+    setDeleteError('');
+  };
+
+  const deleteUserData = async (userId) => {
+    try {
+      // Delete user profile image from storage if it exists
+      if (profileUrl) {
+        try {
+          const oldImagePath = profileUrl.split('profiles%2F')[1]?.split('?')[0];
+          if (oldImagePath) {
+            const oldImageRef = ref(storage, `profiles/${oldImagePath}`);
+            await deleteObject(oldImageRef);
+          }
+        } catch (error) {
+          console.log('Error deleting profile image:', error);
+          // Continue with deletion even if image delete fails
+        }
+      }
+
+      // Delete user document from Firestore
+      const userRef = doc(db, 'users', userId);
+      await deleteDoc(userRef);
+
+      // Find and delete user's groups where they are the only member
+      const groupsQuery = query(collection(db, 'groups'), where('createdBy', '==', userId));
+      const groupsSnapshot = await getDocs(groupsQuery);
+      
+      for (const groupDoc of groupsSnapshot.docs) {
+        const groupData = groupDoc.data();
+        // If user is the only member, delete the group
+        if (groupData.members && groupData.members.length === 1 && groupData.members[0] === userId) {
+          // Delete group document
+          await deleteDoc(doc(db, 'groups', groupDoc.id));
+          
+          // Delete associated expenses
+          const expensesQuery = query(collection(db, 'expenses'), where('groupId', '==', groupDoc.id));
+          const expensesSnapshot = await getDocs(expensesQuery);
+          
+          for (const expenseDoc of expensesSnapshot.docs) {
+            await deleteDoc(doc(db, 'expenses', expenseDoc.id));
+          }
+        }
+      }
+
+      console.log('User data deleted successfully');
+    } catch (error) {
+      console.error('Error deleting user data:', error);
+      throw error;
+    }
+  };
+
+  const confirmDeleteAccount = async () => {
+    if (!password.trim()) {
+      setDeleteError('Please enter your password');
+      return;
+    }
+
+    setDeleteLoading(true);
+    setDeleteError('');
+
+    try {
+      const currentUser = auth.currentUser;
+      if (!currentUser) {
+        throw new Error('User not authenticated');
+      }
+
+      // Re-authenticate user before deletion
+      const credential = EmailAuthProvider.credential(currentUser.email, password);
+      await reauthenticateWithCredential(currentUser, credential);
+
+      // Delete user data from Firestore first
+      await deleteUserData(user.id);
+
+      // Delete the user account from Firebase Auth
+      await deleteUser(currentUser);
+
+      // Clear local storage and Redux state
+      await dispatch(clearAuth()).unwrap();
+      dispatch(logout());
+
+      // Close modal and show success message
+      closeDeleteModal();
+      Alert.alert(
+        'Account Deleted',
+        'Your account has been successfully deleted.',
+        [{ text: 'OK' }]
+      );
+    } catch (error) {
+      console.error('Error deleting account:', error);
+      let errorMessage = 'Failed to delete account';
+      
+      if (error.code === 'auth/wrong-password') {
+        errorMessage = 'Incorrect password. Please try again.';
+      } else if (error.code === 'auth/too-many-requests') {
+        errorMessage = 'Too many unsuccessful attempts. Please try again later.';
+      } else if (error.code === 'auth/network-request-failed') {
+        errorMessage = 'Network error. Please check your connection and try again.';
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
+      setDeleteError(errorMessage);
+    } finally {
+      setDeleteLoading(false);
+    }
+  };
+
   return (
     <View style={[
       styles.container,
@@ -323,15 +443,95 @@ const SettingsScreen = () => {
         </TouchableOpacity>
       </View>
 
-      <TouchableOpacity
-        style={[
-          styles.logoutButton,
-          { backgroundColor: theme ? '#ef4444' : '#dc2626' }
-        ]}
-        onPress={handleLogout}
+      <View style={styles.buttonContainer}>
+        <TouchableOpacity
+          style={[
+            styles.deleteAccountButton,
+            { backgroundColor: theme ? '#1e1e1e' : '#f9f9f9', borderColor: theme ? '#ef4444' : '#dc2626' }
+          ]}
+          onPress={handleDeleteAccount}
+        >
+          <Text style={[styles.deleteAccountText, { color: theme ? '#ef4444' : '#dc2626' }]}>Delete Account</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[
+            styles.logoutButton,
+            { backgroundColor: theme ? '#ef4444' : '#dc2626' }
+          ]}
+          onPress={handleLogout}
+        >
+          <Text style={styles.logoutText}>Logout</Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* Delete Account Confirmation Modal */}
+      <Modal
+        visible={showDeleteModal}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={closeDeleteModal}
       >
-        <Text style={styles.logoutText}>Logout</Text>
-      </TouchableOpacity>
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContainer, { backgroundColor: theme ? '#1e1e1e' : '#ffffff' }]}>
+            <Text style={[styles.modalTitle, { color: theme ? '#f1f1f1' : '#121212' }]}>
+              Delete Account
+            </Text>
+            
+            <Text style={[styles.modalText, { color: theme ? '#f1f1f1' : '#121212' }]}>
+              This action cannot be undone. All your data will be permanently deleted.
+            </Text>
+            
+            <Text style={[styles.modalSubText, { color: theme ? '#f1f1f1' : '#121212' }]}>
+              Please enter your password to confirm:
+            </Text>
+            
+            <TextInput
+              style={[
+                styles.passwordInput,
+                { 
+                  color: theme ? '#f1f1f1' : '#121212',
+                  backgroundColor: theme ? '#121212' : '#f9f9f9',
+                  borderColor: deleteError ? '#ef4444' : theme ? '#333333' : '#e5e5e5'
+                }
+              ]}
+              value={password}
+              onChangeText={setPassword}
+              placeholder="Enter your password"
+              placeholderTextColor={theme ? '#666666' : '#999999'}
+              secureTextEntry
+            />
+            
+            {deleteError ? (
+              <Text style={styles.errorText}>{deleteError}</Text>
+            ) : null}
+            
+            <View style={styles.modalButtons}>
+              <TouchableOpacity 
+                style={[styles.cancelButton, { backgroundColor: theme ? '#1e1e1e' : '#f9f9f9' }]}
+                onPress={closeDeleteModal}
+                disabled={deleteLoading}
+              >
+                <Text style={[styles.cancelButtonText, { color: theme ? '#f1f1f1' : '#121212' }]}>
+                  Cancel
+                </Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity 
+                style={[styles.confirmButton, { backgroundColor: theme ? '#ef4444' : '#dc2626' }]}
+                onPress={confirmDeleteAccount}
+                disabled={deleteLoading}
+              >
+                {deleteLoading ? (
+                  <ActivityIndicator color="#ffffff" size="small" />
+                ) : (
+                  <Text style={styles.confirmButtonText}>Delete</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 };
@@ -340,6 +540,9 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     padding: 16,
+  },
+  buttonContainer: {
+    gap: 10,
   },
   nameContainer: {
     marginTop: 16,
@@ -454,10 +657,97 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
   },
+  deleteAccountButton: {
+    height: 50,
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+  },
+  deleteAccountText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
   pencilIcon: {
     width: 15,
     height: 15,
     marginLeft: 8
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  modalContainer: {
+    width: '100%',
+    borderRadius: 12,
+    padding: 20,
+    elevation: 5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    marginBottom: 16,
+    textAlign: 'center',
+  },
+  modalText: {
+    fontSize: 16,
+    marginBottom: 16,
+    textAlign: 'center',
+  },
+  modalSubText: {
+    fontSize: 14,
+    marginBottom: 12,
+  },
+  passwordInput: {
+    height: 50,
+    borderWidth: 1,
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    fontSize: 16,
+    marginBottom: 12,
+  },
+  errorText: {
+    color: '#ef4444',
+    marginBottom: 12,
+    fontSize: 14,
+  },
+  modalButtons: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 8,
+  },
+  cancelButton: {
+    flex: 1,
+    height: 50,
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 8,
+    borderWidth: 1,
+    borderColor: '#e5e5e5',
+  },
+  cancelButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  confirmButton: {
+    flex: 1,
+    height: 50,
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  confirmButtonText: {
+    color: '#ffffff',
+    fontSize: 16,
+    fontWeight: '600',
   },
 });
 

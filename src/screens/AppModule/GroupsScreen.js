@@ -302,6 +302,7 @@ const styles = StyleSheet.create({
   },
   profileButton: {
     marginRight: 8,
+    borderWidth:1,
   },
   profileImage: {
     width: 32,
